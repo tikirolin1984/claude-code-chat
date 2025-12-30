@@ -699,11 +699,24 @@ class ClaudeChatProvider {
 					// Process each content item in the assistant message
 					for (const content of jsonData.message.content) {
 						if (content.type === 'text' && content.text.trim()) {
-							// Show text content and save to conversation
-							this._sendAndSaveMessage({
-								type: 'output',
-								data: content.text.trim()
-							});
+							// Check for artifacts in the text and extract them
+							const { textWithoutArtifacts, artifacts } = this._extractArtifacts(content.text.trim());
+
+							// Send any extracted artifacts
+							for (const artifact of artifacts) {
+								this._sendAndSaveMessage({
+									type: 'artifact',
+									data: artifact
+								});
+							}
+
+							// Show remaining text content if any
+							if (textWithoutArtifacts.trim()) {
+								this._sendAndSaveMessage({
+									type: 'output',
+									data: textWithoutArtifacts.trim()
+								});
+							}
 						} else if (content.type === 'thinking' && content.thinking.trim()) {
 							// Show thinking content and save to conversation
 							this._sendAndSaveMessage({
@@ -865,6 +878,105 @@ class ClaudeChatProvider {
 		}
 	}
 
+
+	private _extractArtifacts(text: string): { textWithoutArtifacts: string, artifacts: any[] } {
+		const artifacts: any[] = [];
+		let textWithoutArtifacts = text;
+
+		// Pattern to match code blocks that should be treated as artifacts
+		// Matches ```language ... ``` blocks
+		const codeBlockRegex = /```(html|svg|jsx|tsx|react|mermaid|css|json|xml)?\n([\s\S]*?)```/gi;
+
+		let match;
+		const blocksToRemove: { start: number, end: number, artifact: any }[] = [];
+
+		while ((match = codeBlockRegex.exec(text)) !== null) {
+			const language = (match[1] || '').toLowerCase();
+			const content = match[2].trim();
+
+			// Determine if this should be an artifact based on content and language
+			let artifactType: string | null = null;
+			let title = '';
+			let icon = '📄';
+
+			if (language === 'html' || (language === '' && content.includes('<!DOCTYPE') || content.includes('<html'))) {
+				artifactType = 'html';
+				title = 'HTML Document';
+				icon = '🌐';
+			} else if (language === 'svg' || (content.startsWith('<svg') && content.includes('</svg>'))) {
+				artifactType = 'svg';
+				title = 'SVG Image';
+				icon = '🎨';
+			} else if (language === 'jsx' || language === 'tsx' || language === 'react') {
+				artifactType = 'react';
+				title = 'React Component';
+				icon = '⚛️';
+			} else if (language === 'mermaid') {
+				artifactType = 'mermaid';
+				title = 'Mermaid Diagram';
+				icon = '📊';
+			} else if (language === 'css') {
+				// Check if CSS is substantial enough to be an artifact
+				if (content.length > 200 || content.includes('@keyframes') || content.includes('@media')) {
+					artifactType = 'css';
+					title = 'CSS Stylesheet';
+					icon = '🎨';
+				}
+			} else if (language === 'json') {
+				// Check if JSON is substantial or structured data
+				try {
+					const parsed = JSON.parse(content);
+					if (typeof parsed === 'object' && Object.keys(parsed).length > 3) {
+						artifactType = 'json';
+						title = 'JSON Data';
+						icon = '📋';
+					}
+				} catch {
+					// Not valid JSON, skip
+				}
+			}
+
+			// Also check for HTML-like content without language specifier
+			if (!artifactType && language === '') {
+				if (content.includes('<div') && content.includes('</div>') && content.includes('style')) {
+					artifactType = 'html';
+					title = 'HTML Content';
+					icon = '🌐';
+				}
+			}
+
+			if (artifactType) {
+				const artifactId = `artifact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+				blocksToRemove.push({
+					start: match.index,
+					end: match.index + match[0].length,
+					artifact: {
+						id: artifactId,
+						type: artifactType,
+						title: title,
+						icon: icon,
+						content: content,
+						language: language || artifactType
+					}
+				});
+			}
+		}
+
+		// Remove artifact blocks from text (in reverse order to preserve indices)
+		blocksToRemove.sort((a, b) => b.start - a.start);
+		for (const block of blocksToRemove) {
+			artifacts.unshift(block.artifact); // Add to beginning to maintain order
+			textWithoutArtifacts =
+				textWithoutArtifacts.substring(0, block.start) +
+				textWithoutArtifacts.substring(block.end);
+		}
+
+		// Clean up any leftover empty lines from removed blocks
+		textWithoutArtifacts = textWithoutArtifacts.replace(/\n{3,}/g, '\n\n').trim();
+
+		return { textWithoutArtifacts, artifacts };
+	}
 
 	private _newSession() {
 

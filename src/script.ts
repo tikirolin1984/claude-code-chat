@@ -2112,9 +2112,362 @@ const getScript = (isTelemetryEnabled: boolean) => `<script>
 				case 'mcpServerError':
 					addMessage('❌ Error with MCP server: ' + message.data.error, 'error');
 					break;
+				case 'artifact':
+					addArtifactMessage(message.data);
+					break;
 			}
 		});
 		
+		// Artifact functions
+		function addArtifactMessage(artifact) {
+			const messagesDiv = document.getElementById('messages');
+			const shouldScroll = shouldAutoScroll(messagesDiv);
+
+			const messageDiv = document.createElement('div');
+			messageDiv.className = 'message artifact-message';
+			messageDiv.id = artifact.id;
+
+			const artifactContainer = document.createElement('div');
+			artifactContainer.className = 'artifact-container';
+			artifactContainer.id = \`container-\${artifact.id}\`;
+
+			// Create header
+			const header = document.createElement('div');
+			header.className = 'artifact-header';
+			header.onclick = () => toggleArtifact(artifact.id);
+
+			header.innerHTML = \`
+				<div class="artifact-header-left">
+					<div class="artifact-icon">\${artifact.icon}</div>
+					<div class="artifact-title-container">
+						<div class="artifact-title">\${escapeHtml(artifact.title)}</div>
+						<span class="artifact-type-badge">\${artifact.type}</span>
+					</div>
+				</div>
+				<div class="artifact-header-right">
+					<button class="artifact-action-btn" onclick="event.stopPropagation(); copyArtifactCode('\${artifact.id}')" title="Copy code">
+						<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+						Copy
+					</button>
+					\${canPreviewArtifact(artifact.type) ? \`
+						<button class="artifact-action-btn primary" onclick="event.stopPropagation(); openArtifactFullscreen('\${artifact.id}')" title="Open fullscreen">
+							<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+							Preview
+						</button>
+					\` : ''}
+					<span class="artifact-expand-icon">▼</span>
+				</div>
+			\`;
+
+			artifactContainer.appendChild(header);
+
+			// Create content area
+			const content = document.createElement('div');
+			content.className = 'artifact-content';
+			content.id = \`content-\${artifact.id}\`;
+
+			// Create tabs for artifacts that support preview
+			if (canPreviewArtifact(artifact.type)) {
+				const tabs = document.createElement('div');
+				tabs.className = 'artifact-tabs';
+				tabs.innerHTML = \`
+					<button class="artifact-tab active" onclick="switchArtifactTab('\${artifact.id}', 'preview')">Preview</button>
+					<button class="artifact-tab" onclick="switchArtifactTab('\${artifact.id}', 'code')">Code</button>
+				\`;
+				content.appendChild(tabs);
+
+				// Preview tab content
+				const previewTab = document.createElement('div');
+				previewTab.className = 'artifact-tab-content active';
+				previewTab.id = \`preview-\${artifact.id}\`;
+				previewTab.innerHTML = renderArtifactPreview(artifact);
+				content.appendChild(previewTab);
+
+				// Code tab content
+				const codeTab = document.createElement('div');
+				codeTab.className = 'artifact-tab-content';
+				codeTab.id = \`code-\${artifact.id}\`;
+				codeTab.innerHTML = renderArtifactCode(artifact);
+				content.appendChild(codeTab);
+			} else {
+				// Just show code for non-previewable artifacts
+				const codeContent = document.createElement('div');
+				codeContent.className = 'artifact-tab-content active';
+				codeContent.innerHTML = renderArtifactCode(artifact);
+				content.appendChild(codeContent);
+			}
+
+			artifactContainer.appendChild(content);
+
+			// Store artifact data for later use
+			artifactContainer.dataset.artifact = JSON.stringify(artifact);
+
+			messageDiv.appendChild(artifactContainer);
+			messagesDiv.appendChild(messageDiv);
+			scrollToBottomIfNeeded(messagesDiv, shouldScroll);
+		}
+
+		function canPreviewArtifact(type) {
+			return ['html', 'svg', 'mermaid', 'react'].includes(type);
+		}
+
+		function renderArtifactPreview(artifact) {
+			switch (artifact.type) {
+				case 'html':
+					return renderHtmlPreview(artifact);
+				case 'svg':
+					return renderSvgPreview(artifact);
+				case 'mermaid':
+					return renderMermaidPreview(artifact);
+				case 'react':
+					return renderReactPreview(artifact);
+				default:
+					return '<div class="artifact-preview">Preview not available</div>';
+			}
+		}
+
+		function renderHtmlPreview(artifact) {
+			// Create a sandboxed iframe for HTML preview
+			const iframeId = \`iframe-\${artifact.id}\`;
+			const htmlContent = artifact.content;
+
+			// Create full HTML document if not already complete
+			let fullHtml = htmlContent;
+			if (!htmlContent.includes('<!DOCTYPE') && !htmlContent.includes('<html')) {
+				fullHtml = \`
+					<!DOCTYPE html>
+					<html>
+					<head>
+						<meta charset="UTF-8">
+						<style>
+							body {
+								font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+								margin: 0;
+								padding: 16px;
+								background: white;
+								color: #333;
+							}
+						</style>
+					</head>
+					<body>\${htmlContent}</body>
+					</html>
+				\`;
+			}
+
+			// Base64 encode for srcdoc
+			const encodedHtml = btoa(unescape(encodeURIComponent(fullHtml)));
+
+			return \`
+				<div class="artifact-preview">
+					<iframe
+						id="\${iframeId}"
+						sandbox="allow-scripts allow-same-origin"
+						data-html="\${encodedHtml}"
+						onload="this.srcdoc = atob(this.dataset.html)"
+						style="width: 100%; min-height: 200px; border: none; background: white;">
+					</iframe>
+				</div>
+			\`;
+		}
+
+		function renderSvgPreview(artifact) {
+			return \`
+				<div class="artifact-preview artifact-preview-svg">
+					\${artifact.content}
+				</div>
+			\`;
+		}
+
+		function renderMermaidPreview(artifact) {
+			// Mermaid requires external library, show code with note
+			return \`
+				<div class="artifact-preview artifact-mermaid">
+					<div style="text-align: center; color: #666; padding: 20px;">
+						<p>Mermaid diagrams require the Mermaid library to render.</p>
+						<p>View the code tab to see the diagram definition.</p>
+					</div>
+				</div>
+			\`;
+		}
+
+		function renderReactPreview(artifact) {
+			// React components can't be directly previewed without a build step
+			return \`
+				<div class="artifact-preview artifact-react-preview">
+					<div class="artifact-react-error">
+						<p><strong>React Component</strong></p>
+						<p>This is a React component that requires a React environment to render.</p>
+						<p>View the code tab to see the component definition, then use it in your React project.</p>
+					</div>
+				</div>
+			\`;
+		}
+
+		function renderArtifactCode(artifact) {
+			const escapedContent = escapeHtml(artifact.content);
+			const codeLines = artifact.content.split('\\n');
+			let codeHtml = '';
+
+			for (const line of codeLines) {
+				codeHtml += '<div class="code-line">' + escapeHtml(line) + '</div>';
+			}
+
+			return \`
+				<div class="artifact-code">
+					<div class="artifact-code-header">
+						<span class="artifact-code-language">\${artifact.language}</span>
+						<button class="code-copy-btn" onclick="copyArtifactCode('\${artifact.id}')" title="Copy code">
+							<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+						</button>
+					</div>
+					<pre class="artifact-code-content">\${codeHtml}</pre>
+				</div>
+			\`;
+		}
+
+		function toggleArtifact(artifactId) {
+			const container = document.getElementById(\`container-\${artifactId}\`);
+			if (container) {
+				container.classList.toggle('expanded');
+			}
+		}
+
+		function switchArtifactTab(artifactId, tabName) {
+			const previewTab = document.getElementById(\`preview-\${artifactId}\`);
+			const codeTab = document.getElementById(\`code-\${artifactId}\`);
+			const container = document.getElementById(\`container-\${artifactId}\`);
+
+			if (!container) return;
+
+			const tabs = container.querySelectorAll('.artifact-tab');
+			const tabContents = container.querySelectorAll('.artifact-tab-content');
+
+			// Update tab active states
+			tabs.forEach((tab, index) => {
+				if ((tabName === 'preview' && index === 0) || (tabName === 'code' && index === 1)) {
+					tab.classList.add('active');
+				} else {
+					tab.classList.remove('active');
+				}
+			});
+
+			// Update tab content visibility
+			if (previewTab && codeTab) {
+				if (tabName === 'preview') {
+					previewTab.classList.add('active');
+					codeTab.classList.remove('active');
+				} else {
+					previewTab.classList.remove('active');
+					codeTab.classList.add('active');
+				}
+			}
+		}
+
+		function copyArtifactCode(artifactId) {
+			const container = document.getElementById(\`container-\${artifactId}\`);
+			if (!container) return;
+
+			try {
+				const artifact = JSON.parse(container.dataset.artifact);
+				navigator.clipboard.writeText(artifact.content).then(() => {
+					// Show temporary feedback
+					const btn = container.querySelector('.artifact-action-btn');
+					if (btn) {
+						const originalText = btn.innerHTML;
+						btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Copied!';
+						setTimeout(() => {
+							btn.innerHTML = originalText;
+						}, 2000);
+					}
+				}).catch(err => {
+					console.error('Failed to copy artifact code:', err);
+				});
+			} catch (e) {
+				console.error('Error parsing artifact data:', e);
+			}
+		}
+
+		function openArtifactFullscreen(artifactId) {
+			const container = document.getElementById(\`container-\${artifactId}\`);
+			if (!container) return;
+
+			try {
+				const artifact = JSON.parse(container.dataset.artifact);
+
+				// Create fullscreen modal
+				const modal = document.createElement('div');
+				modal.className = 'artifact-fullscreen-modal';
+				modal.id = \`fullscreen-\${artifactId}\`;
+				modal.onclick = (e) => {
+					if (e.target === modal) closeArtifactFullscreen(artifactId);
+				};
+
+				let previewContent = '';
+				if (artifact.type === 'html') {
+					let fullHtml = artifact.content;
+					if (!artifact.content.includes('<!DOCTYPE') && !artifact.content.includes('<html')) {
+						fullHtml = \`
+							<!DOCTYPE html>
+							<html>
+							<head>
+								<meta charset="UTF-8">
+								<style>
+									body {
+										font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+										margin: 0;
+										padding: 24px;
+										background: white;
+										color: #333;
+									}
+								</style>
+							</head>
+							<body>\${artifact.content}</body>
+							</html>
+						\`;
+					}
+					const encodedHtml = btoa(unescape(encodeURIComponent(fullHtml)));
+					previewContent = \`<iframe sandbox="allow-scripts allow-same-origin" data-html="\${encodedHtml}" onload="this.srcdoc = atob(this.dataset.html)"></iframe>\`;
+				} else if (artifact.type === 'svg') {
+					previewContent = \`<div class="artifact-preview-svg" style="height: 100%; display: flex; align-items: center; justify-content: center; background: white;">\${artifact.content}</div>\`;
+				}
+
+				modal.innerHTML = \`
+					<div class="artifact-fullscreen-content">
+						<div class="artifact-fullscreen-header">
+							<div class="artifact-fullscreen-title">
+								<div class="artifact-icon">\${artifact.icon}</div>
+								<span class="artifact-title">\${escapeHtml(artifact.title)}</span>
+								<span class="artifact-type-badge">\${artifact.type}</span>
+							</div>
+							<button class="artifact-fullscreen-close" onclick="closeArtifactFullscreen('\${artifactId}')">Close</button>
+						</div>
+						<div class="artifact-fullscreen-body">
+							\${previewContent}
+						</div>
+					</div>
+				\`;
+
+				document.body.appendChild(modal);
+
+				// Handle escape key
+				document.addEventListener('keydown', function escHandler(e) {
+					if (e.key === 'Escape') {
+						closeArtifactFullscreen(artifactId);
+						document.removeEventListener('keydown', escHandler);
+					}
+				});
+			} catch (e) {
+				console.error('Error opening fullscreen artifact:', e);
+			}
+		}
+
+		function closeArtifactFullscreen(artifactId) {
+			const modal = document.getElementById(\`fullscreen-\${artifactId}\`);
+			if (modal) {
+				modal.remove();
+			}
+		}
+
 		// Permission request functions
 		function addPermissionRequestMessage(data) {
 			const messagesDiv = document.getElementById('messages');

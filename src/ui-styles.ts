@@ -2874,6 +2874,376 @@ const styles = `
         overflow: hidden;
         text-overflow: ellipsis;
     }
+
+    /* Artifact Styles */
+    .artifact-container {
+        margin: 12px 0;
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: var(--vscode-editor-background);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .artifact-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: linear-gradient(135deg, rgba(138, 43, 226, 0.1) 0%, rgba(75, 0, 130, 0.1) 100%);
+        border-bottom: 1px solid var(--vscode-panel-border);
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .artifact-header:hover {
+        background: linear-gradient(135deg, rgba(138, 43, 226, 0.15) 0%, rgba(75, 0, 130, 0.15) 100%);
+    }
+
+    .artifact-header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .artifact-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .artifact-title-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .artifact-title {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--vscode-foreground);
+    }
+
+    .artifact-type-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background-color: rgba(138, 43, 226, 0.2);
+        color: #a78bfa;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+
+    .artifact-header-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .artifact-action-btn {
+        background: transparent;
+        border: 1px solid var(--vscode-panel-border);
+        color: var(--vscode-descriptionForeground);
+        padding: 4px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .artifact-action-btn:hover {
+        background-color: var(--vscode-list-hoverBackground);
+        border-color: var(--vscode-focusBorder);
+        color: var(--vscode-foreground);
+    }
+
+    .artifact-action-btn.primary {
+        background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        border-color: transparent;
+        color: white;
+    }
+
+    .artifact-action-btn.primary:hover {
+        background: linear-gradient(135deg, #9d74f7 0%, #7c3aed 100%);
+        transform: translateY(-1px);
+    }
+
+    .artifact-expand-icon {
+        transition: transform 0.2s ease;
+        font-size: 12px;
+    }
+
+    .artifact-container.expanded .artifact-expand-icon {
+        transform: rotate(180deg);
+    }
+
+    .artifact-content {
+        display: none;
+        border-top: 1px solid var(--vscode-panel-border);
+    }
+
+    .artifact-container.expanded .artifact-content {
+        display: block;
+    }
+
+    .artifact-tabs {
+        display: flex;
+        background-color: var(--vscode-panel-background);
+        border-bottom: 1px solid var(--vscode-panel-border);
+        padding: 0 8px;
+    }
+
+    .artifact-tab {
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--vscode-descriptionForeground);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+    }
+
+    .artifact-tab:hover {
+        color: var(--vscode-foreground);
+        background-color: var(--vscode-list-hoverBackground);
+    }
+
+    .artifact-tab.active {
+        color: #a78bfa;
+        border-bottom-color: #8b5cf6;
+    }
+
+    .artifact-tab-content {
+        display: none;
+        padding: 12px;
+    }
+
+    .artifact-tab-content.active {
+        display: block;
+    }
+
+    .artifact-preview {
+        background-color: #ffffff;
+        border-radius: 6px;
+        min-height: 200px;
+        max-height: 500px;
+        overflow: auto;
+        border: 1px solid var(--vscode-panel-border);
+    }
+
+    .artifact-preview iframe {
+        width: 100%;
+        min-height: 200px;
+        border: none;
+        background-color: #ffffff;
+    }
+
+    .artifact-preview-image {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .artifact-preview-svg {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background-color: #ffffff;
+        min-height: 150px;
+    }
+
+    .artifact-preview-svg svg {
+        max-width: 100%;
+        max-height: 400px;
+    }
+
+    .artifact-code {
+        background-color: var(--vscode-textCodeBlock-background);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .artifact-code-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 12px;
+        background-color: var(--vscode-editor-background);
+        border-bottom: 1px solid var(--vscode-panel-border);
+    }
+
+    .artifact-code-language {
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+
+    .artifact-code-content {
+        padding: 12px;
+        font-family: var(--vscode-editor-font-family);
+        font-size: 13px;
+        line-height: 1.5;
+        overflow-x: auto;
+        max-height: 400px;
+        overflow-y: auto;
+        white-space: pre;
+        color: var(--vscode-editor-foreground);
+    }
+
+    .artifact-markdown {
+        padding: 16px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--vscode-editor-foreground);
+    }
+
+    .artifact-markdown h1,
+    .artifact-markdown h2,
+    .artifact-markdown h3 {
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+    }
+
+    .artifact-markdown p {
+        margin: 0.5em 0;
+    }
+
+    .artifact-markdown code {
+        background-color: var(--vscode-textCodeBlock-background);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: var(--vscode-editor-font-family);
+    }
+
+    .artifact-markdown pre {
+        background-color: var(--vscode-textCodeBlock-background);
+        padding: 12px;
+        border-radius: 6px;
+        overflow-x: auto;
+    }
+
+    .artifact-fullscreen-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .artifact-fullscreen-content {
+        background-color: var(--vscode-editor-background);
+        border-radius: 12px;
+        width: 95%;
+        max-width: 1200px;
+        height: 90%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .artifact-fullscreen-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, rgba(138, 43, 226, 0.1) 0%, rgba(75, 0, 130, 0.1) 100%);
+        border-bottom: 1px solid var(--vscode-panel-border);
+    }
+
+    .artifact-fullscreen-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .artifact-fullscreen-body {
+        flex: 1;
+        overflow: auto;
+        padding: 0;
+    }
+
+    .artifact-fullscreen-body iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background-color: #ffffff;
+    }
+
+    .artifact-fullscreen-close {
+        background: transparent;
+        border: 1px solid var(--vscode-panel-border);
+        color: var(--vscode-foreground);
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .artifact-fullscreen-close:hover {
+        background-color: var(--vscode-list-hoverBackground);
+        border-color: var(--vscode-focusBorder);
+    }
+
+    /* React artifact specific */
+    .artifact-react-preview {
+        background-color: #ffffff;
+        min-height: 200px;
+        border-radius: 6px;
+    }
+
+    .artifact-react-error {
+        padding: 16px;
+        background-color: rgba(231, 76, 60, 0.1);
+        border: 1px solid rgba(231, 76, 60, 0.3);
+        border-radius: 6px;
+        color: #e74c3c;
+        font-size: 13px;
+    }
+
+    /* Mermaid diagram styles */
+    .artifact-mermaid {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background-color: #ffffff;
+        min-height: 200px;
+        border-radius: 6px;
+    }
+
+    .artifact-mermaid svg {
+        max-width: 100%;
+    }
 </style>`
 
 export default styles
